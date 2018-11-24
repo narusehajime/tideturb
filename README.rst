@@ -1,7 +1,8 @@
-MARSLOBES
+TIDETURB
 ========================
 
-This is a code for inverse analysis of lobate deposits on Mars.
+This is a code for modeling of tide-influenced turbidity currents. Two layer
+shallow water equations are adopted in this model.
 
 ---------------
 Installation
@@ -10,41 +11,29 @@ python setup.py install
 
 ---------------
 
-Example
+Usage
 ---------
-from landlab.io.esri_ascii import read_esri_ascii
-import matplotlib.pyplot as plt
-import numpy as np
-from landlab import Component, FieldError, RasterModelGrid
-from landlab.plot.imshow import imshow_grid
+from tideturb import TwoLayerTurbidityCurrent, Grid
+from matplotlib import pyplot as plt
 
-grid = RasterModelGrid((200, 100), spacing=10.0)
-grid.add_zeros('flow__depth', at='node')
-grid.add_zeros('topographic__elevation', at='node')
-grid.add_zeros('flow__horizontal_velocity', at='link')
-grid.add_zeros('flow__vertical_velocity', at='link')
-initial_flow_region = (grid.node_x > 400.) & (grid.node_x < 600.) & (
-    grid.node_y > 1400.) & (grid.node_y < 1600.)
+grid = Grid(number_of_grids=100, spacing=100.0)
+grid.eta = grid.x * -0.01
+tc = TwoLayerTurbidityCurrent(
+    grid=grid,
+    turb_vel=1.0,
+    ambient_vel=0.3,
+    turb_thick=5.0,
+    ambient_thick=100.0,
+    concentration=0.01,
+    alpha=0.0001)
+steps = 500
+for i in range(steps):
+    tc.plot()
+    plt.savefig('test/tidal_flood_{:04d}'.format(i))
+    tc.run_one_step(dt=20.0)
+    print("", end='\r')
+    print('{:.1f}% finished.'.format(i / steps * 100), end='\r')
 
-grid.at_node['flow__depth'][initial_flow_region] = 20.0
-grid.at_node['topographic__elevation'][
-    grid.node_y > 1000] = (grid.node_y[grid.node_y > 1000] - 1000) * 0.15
-
-dflow = DebrisFlow(
-    grid,
-    h_init=0.01,
-    alpha=0.1, # Change this for stability of calculation
-    flow_type='Voellmy', # choose 'water' or 'Voellmy'.
-    Cf=0.004, # friction
-    basal_friction_angle=0.0875, # kind of yield strength
-    )
-
-last = 20
-for i in range(last):
-    dflow.run_one_step(dt=10.0)
-    plt.clf()
-    imshow_grid(grid, 'flow__depth', cmap='Blues')
-    plt.savefig('dflow{:04d}.png'.format(i))
-    print("", end="\r")
-    print("{:.1f}% finished".format((i + 1) / (last) * 100), end='\r')
-
+tc.plot()
+plt.savefig('test/tidal_flood_{:04d}'.format(i))
+plt.show()
