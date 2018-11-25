@@ -225,7 +225,7 @@ class TwoLayerTurbidityCurrent():
             (np.array([np.arange(self.U_link.shape[0], dtype='int')]).T
              * np.ones(core_links.shape, dtype='int'), core_links)
         )
-        ipdb.set_trace()
+
         # Set initial and boundary conditions
         self.h_node[1, 0] = turb_thick
         self.h_node[1, 1:] = h_init * np.ones(self.h_node[1, 1:].shape)
@@ -442,8 +442,8 @@ class TwoLayerTurbidityCurrent():
 
         """
         # Firstly, flow velocity is assumed to be positive everywhere
-        up = [core[0], core[1] - 1]
-        down = [core[0], core[1] + 1]
+        up = tuple((core[0], core[1] - 1))
+        down = tuple((core[0], core[1] + 1))
 
         # find the negative values in the flow velocity arrays
         negative_u_index = np.where(u[core] < 0)
