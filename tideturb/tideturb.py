@@ -218,14 +218,12 @@ class TwoLayerTurbidityCurrent():
         core_nodes = np.tile(self.grid.core_nodes, (self.h_node.shape[0], 1))
         core_links = np.tile(self.grid.core_links, (self.U_link.shape[0], 1))
         self.core_nodes = tuple(
-            ((np.array([np.arange(self.h_node.shape[0], dtype='int')]).T
-              * np.ones(core_nodes.shape, dtype='int')).tolist(),
-             core_nodes.tolist())
+            (np.array([np.arange(self.h_node.shape[0], dtype='int')]).T
+             * np.ones(core_nodes.shape, dtype='int'), core_nodes)
         )
         self.core_links = tuple(
-            ((np.array([np.arange(self.U_link.shape[0], dtype='int')]).T
-              * np.ones(core_links.shape, dtype='int')).tolist(),
-             core_links.tolist())
+            (np.array([np.arange(self.U_link.shape[0], dtype='int')]).T
+             * np.ones(core_links.shape, dtype='int'), core_links)
         )
         ipdb.set_trace()
         # Set initial and boundary conditions

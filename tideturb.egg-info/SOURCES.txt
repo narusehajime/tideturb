@@ -12,6 +12,8 @@ tideturb/yapf3868RgK.py
 tideturb/yapf3868eV0.py
 tideturb/yapf3868ejc.py
 tideturb/yapf3868prU.py
+tideturb/yapf3868vIF.py
+tideturb/yapf3868w7j.py
 tideturb.egg-info/PKG-INFO
 tideturb.egg-info/SOURCES.txt
 tideturb.egg-info/dependency_links.txt

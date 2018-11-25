@@ -37,7 +37,7 @@ plt.show()
 import numpy as np
 import matplotlib.pyplot as plt
 
-# import ipdb
+import ipdb
 
 
 class Grid():
@@ -217,17 +217,15 @@ class TwoLayerTurbidityCurrent():
         # Other nodes and links are used to describe boundary conditions.
         core_nodes = np.tile(self.grid.core_nodes, (self.h_node.shape[0], 1))
         core_links = np.tile(self.grid.core_links, (self.U_link.shape[0], 1))
-        self.core_nodes = np.array(
-            ((np.array([np.arange(self.h_node.shape[0], dtype='int')]).T
-              * np.ones(core_nodes.shape, dtype='int')).tolist(),
-             core_nodes.tolist())
-            )
-        self.core_links = np.array(
-            ((np.array([np.arange(self.U_link.shape[0], dtype='int')]).T
-              * np.ones(core_links.shape, dtype='int')).tolist(),
-             core_links.tolist())
+        self.core_nodes = tuple(
+            (np.array([np.arange(self.h_node.shape[0], dtype='int')]).T
+             * np.ones(core_nodes.shape, dtype='int'), core_nodes)
         )
-
+        self.core_links = tuple(
+            (np.array([np.arange(self.U_link.shape[0], dtype='int')]).T
+             * np.ones(core_links.shape, dtype='int'), core_links)
+        )
+        ipdb.set_trace()
         # Set initial and boundary conditions
         self.h_node[1, 0] = turb_thick
         self.h_node[1, 1:] = h_init * np.ones(self.h_node[1, 1:].shape)
@@ -573,7 +571,7 @@ class TwoLayerTurbidityCurrent():
                     2 * dx) + 2 * nu / h_t[core] * (U_a[core] - U_t[core]) / (
                         h_a[core] + h_t[core]) - Cf * U_t[core] * np.abs(
                             U_t[core]
-                        ) / h_t[core] - e_w[core] * U_t[core]**2 / h_t[core]
+        ) / h_t[core] - e_w[core] * U_t[core]**2 / h_t[core]
 
         return out_G
 
