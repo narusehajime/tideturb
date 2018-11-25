@@ -37,7 +37,7 @@ plt.show()
 import numpy as np
 import matplotlib.pyplot as plt
 
-# import ipdb
+import ipdb
 
 
 class Grid():
@@ -194,22 +194,12 @@ class TwoLayerTurbidityCurrent():
         # U_link[0,:] is the ambient flow velocity U_a, and U_link[1, :] is
         # the velocity of the turbidity current.
 
-        # h_a and h_t values at nodes
+        # main variables at nodes and links
         self.h_node = np.zeros([2, self.grid.x.shape[0]])
-
-        # h_a and h_t values at link
         self.h_link = np.zeros([2, self.grid.x.shape[0] - 1])
-
-        # U_a and U_t values at nodes
         self.U_node = np.zeros([2, self.grid.x.shape[0]])
-
-        # U_a and U_t values at nodes
         self.U_link = np.zeros([2, self.grid.x.shape[0] - 1])
-
-        # concentration values at nodes
         self.C_node = np.zeros([2, self.grid.x.shape[0]])
-
-        #  concentration values at link
         self.C_link = np.zeros([2, self.grid.x.shape[0] - 1])
 
         # spatial derivatives
@@ -227,15 +217,17 @@ class TwoLayerTurbidityCurrent():
         # Other nodes and links are used to describe boundary conditions.
         core_nodes = np.tile(self.grid.core_nodes, (self.h_node.shape[0], 1))
         core_links = np.tile(self.grid.core_links, (self.U_link.shape[0], 1))
-        self.core_nodes = [
-            np.array([np.arange(self.h_node.shape[0], dtype='int')]).T *
-            np.ones(core_nodes.shape, dtype='int'), core_nodes
-        ]
-        self.core_links = [
-            np.array([np.arange(self.U_link.shape[0], dtype='int')]).T *
-            np.ones(core_links.shape, dtype='int'), core_links
-        ]
-
+        self.core_nodes = tuple(
+            ((np.array([np.arange(self.h_node.shape[0], dtype='int')]).T
+              * np.ones(core_nodes.shape, dtype='int')).tolist(),
+             core_nodes.tolist())
+        )
+        self.core_links = tuple(
+            ((np.array([np.arange(self.U_link.shape[0], dtype='int')]).T
+              * np.ones(core_links.shape, dtype='int')).tolist(),
+             core_links.tolist())
+        )
+        ipdb.set_trace()
         # Set initial and boundary conditions
         self.h_node[1, 0] = turb_thick
         self.h_node[1, 1:] = h_init * np.ones(self.h_node[1, 1:].shape)
@@ -466,13 +458,6 @@ class TwoLayerTurbidityCurrent():
         """ Update values stored in grids, and process boundary conditions
             Mapping values at nodes and links each other
         """
-        # process boundary conditions
-        self.h_node[:, -1] = (
-            self.h_node[:, -2] + self.h_node[:, -3] + self.h_node[:, -4]) / 3
-        self.C_node[:, -1] = (
-            self.C_node[:, -2] + self.C_node[:, -3] + self.C_node[:, -4]) / 3
-        self.U_link[:, -1] = (
-            self.U_link[:, -2] + self.U_link[:, -3] + self.U_link[:, -4]) / 3
 
         # copy temporal values to main variables
         self.h_node[:, :] = self.h_temp[:, :]
@@ -481,6 +466,14 @@ class TwoLayerTurbidityCurrent():
         self.dhdx[:, :] = self.dhdx_temp[:, :]
         self.dUdx[:, :] = self.dUdx_temp[:, :]
         self.dCdx[:] = self.dCdx_temp[:]
+
+        # process boundary conditions
+        self.h_node[:, -1] = (
+            self.h_node[:, -2] + self.h_node[:, -3] + self.h_node[:, -4]) / 3
+        self.C_node[:, -1] = (
+            self.C_node[:, -2] + self.C_node[:, -3] + self.C_node[:, -4]) / 3
+        self.U_link[:, -1] = (
+            self.U_link[:, -2] + self.U_link[:, -3] + self.U_link[:, -4]) / 3
 
         # update node and link values
         self.h_node[self.h_node < self.h_init] = self.h_init
@@ -580,7 +573,7 @@ class TwoLayerTurbidityCurrent():
                     2 * dx) + 2 * nu / h_t[core] * (U_a[core] - U_t[core]) / (
                         h_a[core] + h_t[core]) - Cf * U_t[core] * np.abs(
                             U_t[core]
-                        ) / h_t[core] - e_w[core] * U_t[core]**2 / h_t[core]
+        ) / h_t[core] - e_w[core] * U_t[core]**2 / h_t[core]
 
         return out_G
 
