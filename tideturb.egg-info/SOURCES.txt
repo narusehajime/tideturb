@@ -2,7 +2,6 @@ README.rst
 setup.py
 tideturb/__init__.py
 tideturb/tideturb.py
-tideturb/tideturb_flymake.py
 tideturb/tideturbflat.py
 tideturb.egg-info/PKG-INFO
 tideturb.egg-info/SOURCES.txt

@@ -1,4 +1,4 @@
-from .tideturb import Grid, TwoLayerTurbidityCurrent 
+from .tideturb import Grid, TwoLayerTurbidityCurrent, load_model
 
 
 __copyright__ = 'Copyright (c) 2018 Hajime Naruse'

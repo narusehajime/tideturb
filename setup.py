@@ -18,7 +18,7 @@ setup(
     author_email='naruse@kueps.kyoto-u.ac.jp',
     url='https://github.com/narusehajime/tideturb',
     license=license,
-    install_requires=['numpy'],
+    install_requires=['numpy', 'matplotlib'],
     packages=find_packages(exclude=('tests', 'docs'))
 )
 

@@ -539,6 +539,10 @@ class TwoLayerTurbidityCurrent():
         self.h_node[:, -1] = self.h_node[:, -2]
         self.C_node[:, -1] = self.C_node[:, -2]
         self.U_link[:, -1] = self.U_link[:, -2]
+        self.h_node[0, 0] = self.ambient_thick
+        self.h_node[1, 0] = self.turb_thick
+        self.U_link[0, 0] = self.ambient_vel
+        self.U_link[1, 0] = self.turb_vel
 
         # update node and link values
         self.h_node[self.h_node < self.h_init] = self.h_init
@@ -785,7 +789,7 @@ class TwoLayerTurbidityCurrent():
         # coefficients for calculation
         a = 7.8 * 10**-7
         alpha = 0.6
-        p = 0.1
+        p = 1.0
 
         # calculate entrainemnt rate
         Z = sus_index * Rp**alpha
@@ -1078,7 +1082,8 @@ def load_model(filename):
 
     with open(filename, 'rb') as f:
         tc = pickle.load(f)
-        tc.fig, (tc.axL, tc.axR) = plt.subplots(ncols=2, figsize=(10, 4))
+        tc.fig, (tc.axL, tc.axM, tc.axR) = plt.subplots(ncols=3,
+                                                        figsize=(25, 6))
         return tc
 
     return None
