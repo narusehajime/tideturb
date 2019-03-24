@@ -36,7 +36,8 @@ from matplotlib import pyplot as plt
     tc.save('test6_5000sec')
 
 """
-
+import matplotlib as mpl
+mpl.use('Agg')
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
@@ -345,6 +346,13 @@ class TwoLayerTurbidityCurrent():
                 self.U_link, self.core_links)
 
             # Calculate advection phases of h, U and C
+            dry_link = self.h_link[self.core_links][1] < self.h_init * 2
+            self.U_link[self.core_links][1][dry_link] = self.U_link[up_link][
+                1][dry_link]
+            dry_node = self.h_node[self.core_nodes][1] < self.h_init * 2
+            self.U_node[self.core_nodes][1][dry_node] = self.U_node[up_node][
+                1][dry_node]
+
             U_flat = np.zeros(self.U_link.shape)
             U_flat[1, :] = 2 * self.U_link[1, :] * self.h_link[0, :] \
                 / (self.h_link[0, :] + self.h_link[1, :]) \
@@ -394,6 +402,14 @@ class TwoLayerTurbidityCurrent():
 
             # Calculate non-advection phase of h and U
             for i in range(self.implicit_repeat_num):
+                dry_link = self.h_link_temp[self.
+                                            core_links][1] < self.h_init * 2
+                self.U_link_temp[self.core_links][1][
+                    dry_link] = self.U_link_temp[up_link][1][dry_link]
+                dry_node = self.h_node_temp[self.
+                                            core_nodes][1] < self.h_init * 2
+                self.U_node_temp[self.core_nodes][1][
+                    dry_node] = self.U_node_temp[up_node][1][dry_node]
 
                 self.calc_G_h_flat(
                     self.h_node_temp,
@@ -1268,12 +1284,12 @@ if __name__ == "__main__":
         ambient_vel=0.0,
         turb_thick=5.0,
         ambient_thick=100.0,
-        Ds=50 * 10**-6,
+        Ds=80 * 10**-6,
         concentration=0.01,
         alpha=0.5,
         implicit_repeat_num=30,
         nu_t=0.0)
-    steps = 500
+    steps = 200
     for i in range(steps):
         tc.plot(ylim_velocity=[-0.5, 3.0])
         plt.savefig('test03/tidal_flood_{:04d}'.format(i))
