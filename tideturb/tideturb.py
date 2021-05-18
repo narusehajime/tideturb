@@ -118,6 +118,25 @@ class TwoLayerTurbidityCurrent:
     """
 
     def __init__(
+            self,
+            grid=None,
+            ambient_vel=0.0,
+            ambient_thick=20,
+            turb_vel=1.0,
+            turb_thick=10,
+            concentration=0.01,
+            R=1.65,
+            g=9.81,
+            Cf=0.004,
+            nu_t=1.0 * 10**-4,
+            nu_a=0.8,
+            Ds=50 * 10**-6,
+            nu=1.010 * 10**-6,
+            h_init=0.0001,
+            C_init=0.0001,
+            h_e=0.01,
+            alpha=0.01,
+            implicit_repeat_num=5,
         self,
         grid=None,
         ambient_vel=0.0,
@@ -635,6 +654,10 @@ class TwoLayerTurbidityCurrent:
 
         # increment the total elapsed time
         self.elapsed_time = self.elapsed_time + elapsed_time_local
+    
+    def calc_artificial_viscosity(self, h_node, h_link, U_node, U_link, C_node, C_link, wet_node, dt_local, out_U=None):
+        """Calculate the artificial viscosity based on Ogata and Yabe (1998)
+            Only the velocity is modified at links of compressive region
 
     def calc_artificial_viscosity(
         self,
