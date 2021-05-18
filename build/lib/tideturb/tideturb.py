@@ -1,9 +1,11 @@
 import matplotlib as mpl
-mpl.use('Agg')
+
+mpl.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import ipdb
+
 """This is a model of a turbidity current influenced by tidal flows in
  a submarine canyon. The two-layer shallow water equation system is
  employed. The upper layer is an ambient water, and the lower layer
@@ -44,11 +46,13 @@ from matplotlib import pyplot as plt
 """
 
 
-class Grid():
+class Grid:
     # Grid used for the TwoLayerTurbidityCurrent
     # This class store x coordinates and other flow parameters to output
 
-    def __init__(self, number_of_grids=100, start=0.0, end=None, spacing=1.0, filename=None):
+    def __init__(
+        self, number_of_grids=100, start=0.0, end=None, spacing=1.0, filename=None
+    ):
         """ Constractor of the class Grid
 
            Parameters
@@ -80,25 +84,22 @@ class Grid():
             self.number_of_grids = number_of_grids
             self.dx = spacing
             if end is None:
-                self.x = np.arange(start, start + spacing * number_of_grids,
-                                   spacing)
+                self.x = np.arange(start, start + spacing * number_of_grids, spacing)
             else:
                 self.x = np.arange(start, end, spacing)
-            
+
             # bed elevation
             self.eta = np.zeros(self.x.shape)
 
             # Load initial topography
             if filename is not None:
-                topo_data = np.loadtxt(filename, delimiter=',')
-                self.eta = np.interp(self.x, topo_data[:, 0], 
-                                topo_data[:, 1])
+                topo_data = np.loadtxt(filename, delimiter=",")
+                self.eta = np.interp(self.x, topo_data[:, 0], topo_data[:, 1])
             else:
                 grid.eta = grid.x * -0.05  # constant slope
-            
+
         except ValueError as ve:
             print(ve)
-
 
         # flow parameters
         self.U_a = np.zeros(self.x.shape)  # velocity of ambient water
@@ -108,33 +109,34 @@ class Grid():
         self.C = np.zeros(self.x.shape)  # sediment concentration
 
         # indices of core grids (excluding boundary grids)
-        self.core_nodes = np.arange(1, len(self.x) - 1, dtype='int')
-        self.core_links = np.arange(1, len(self.x) - 2, dtype='int')
+        self.core_nodes = np.arange(1, len(self.x) - 1, dtype="int")
+        self.core_links = np.arange(1, len(self.x) - 2, dtype="int")
 
 
-class TwoLayerTurbidityCurrent():
+class TwoLayerTurbidityCurrent:
     """Two layer model of a turbidity current and an overlying tidal current
     """
+
     def __init__(
-            self,
-            grid=None,
-            ambient_vel=0.0,
-            ambient_thick=20,
-            turb_vel=1.0,
-            turb_thick=10,
-            concentration=0.01,
-            R=1.65,
-            g=9.81,
-            Cf=0.004,
-            nu_t=1.0 * 10**-4,
-            nu_a=0.8,
-            Ds=50 * 10**-6,
-            nu=1.010 * 10**-6,
-            h_init=0.0001,
-            C_init=0.0001,
-            h_e=0.01,
-            alpha=0.01,
-            implicit_repeat_num=5,
+        self,
+        grid=None,
+        ambient_vel=0.0,
+        ambient_thick=20,
+        turb_vel=1.0,
+        turb_thick=10,
+        concentration=0.01,
+        R=1.65,
+        g=9.81,
+        Cf=0.004,
+        nu_t=1.0 * 10 ** -4,
+        nu_a=0.8,
+        Ds=50 * 10 ** -6,
+        nu=1.010 * 10 ** -6,
+        h_init=0.0001,
+        C_init=0.0001,
+        h_e=0.01,
+        alpha=0.01,
+        implicit_repeat_num=5,
     ):
         """ Constractor for TwoLayerTurbidityCurrent
 
@@ -271,19 +273,28 @@ class TwoLayerTurbidityCurrent():
         core_nodes = np.tile(self.grid.core_nodes, (self.h_node.shape[0], 1))
         core_links = np.tile(self.grid.core_links, (self.U_link.shape[0], 1))
         self.core_nodes = tuple(
-            (np.array([np.arange(self.h_node.shape[0], dtype='int')]).T *
-             np.ones(core_nodes.shape, dtype='int'), core_nodes))
+            (
+                np.array([np.arange(self.h_node.shape[0], dtype="int")]).T
+                * np.ones(core_nodes.shape, dtype="int"),
+                core_nodes,
+            )
+        )
         self.core_links = tuple(
-            (np.array([np.arange(self.U_link.shape[0], dtype='int')]).T *
-             np.ones(core_links.shape, dtype='int'), core_links))
+            (
+                np.array([np.arange(self.U_link.shape[0], dtype="int")]).T
+                * np.ones(core_links.shape, dtype="int"),
+                core_links,
+            )
+        )
 
         # Set initial and boundary conditions
         self.h_node[1, 0] = turb_thick
         # self.h_node[1, 1:] = h_init * np.ones(self.h_node[1, 1:].shape)
         self.h_node[1, 1:] = turb_thick * np.ones(self.h_node[1, 1:].shape)
-        self.h_node[0, :] = ambient_thick + turb_thick - self.grid.eta - \
-            self.h_node[1, :]  # initial water surface is flat
-        self.h_link[0, :] = (self.h_node[0, :-1] + self.h_node[0, 1:]) / 2.
+        self.h_node[0, :] = (
+            ambient_thick + turb_thick - self.grid.eta - self.h_node[1, :]
+        )  # initial water surface is flat
+        self.h_link[0, :] = (self.h_node[0, :-1] + self.h_node[0, 1:]) / 2.0
         self.U_link[0, :] = ambient_vel * ambient_thick / self.h_link[0, :]
         self.U_link[1, 0] = turb_vel
         self.U_link[1, 1:] = turb_vel * np.ones(self.U_link[1, 1:].shape)
@@ -291,18 +302,18 @@ class TwoLayerTurbidityCurrent():
         # self.C_node[1, 1:] = np.ones(self.C_node.shape[1] - 1) * self.C_init
         self.C_node[1, 1:] = concentration * np.ones(self.C_node[1, 1:].shape)
 
-        self.dhdx[:, 1:-1] = (self.h_node[:, :-2] -
-                              self.h_node[:, 2:]) / (2 * self.dx)
+        self.dhdx[:, 1:-1] = (self.h_node[:, :-2] - self.h_node[:, 2:]) / (2 * self.dx)
         self.dhdx[:, 0] = self.dhdx[:, 1]
         self.dhdx[:, -1] = self.dhdx[:, -2]
 
         # set topography
         self.eta_node = self.grid.eta
-        self.eta_link = (self.eta_node[0:-1] + self.eta_node[1:]) / 2.
+        self.eta_link = (self.eta_node[0:-1] + self.eta_node[1:]) / 2.0
 
         # Map node and link values each other
-        self.update_values(self.h_node, self.h_link, self.U_node, self.U_link,
-                           self.C_node, self.C_link)
+        self.update_values(
+            self.h_node, self.h_link, self.U_node, self.U_link, self.C_node, self.C_link
+        )
 
         # variables to store calculation results temporary
         self.h_node_temp = self.h_node.copy()
@@ -319,9 +330,9 @@ class TwoLayerTurbidityCurrent():
         self.copy_temp_to_main_variables()
 
         # Making figures
-        self.fig, (self.axL, self.axM, self.axR) = plt.subplots(ncols=3,
-                                                                figsize=(25,
-                                                                         6))
+        self.fig, (self.axL, self.axM, self.axR) = plt.subplots(
+            ncols=3, figsize=(25, 6)
+        )
 
     def calc_time_step(self):
         """calculate time step length based on CFL condition with
@@ -333,7 +344,9 @@ class TwoLayerTurbidityCurrent():
             A time step length to be used as dt_local.
 
         """
-        advel = np.abs(self.U_link) + np.sqrt(self.R * self.C_link * self.g * self.h_link)
+        advel = np.abs(self.U_link) + np.sqrt(
+            self.R * self.C_link * self.g * self.h_link
+        )
         dt = self.alpha * self.dx / np.amax(advel)
         return dt
 
@@ -367,27 +380,48 @@ class TwoLayerTurbidityCurrent():
 
             # find upcurrent and downcurrent ids
             up_node, down_node = self.find_current_direction(
-                self.U_node, self.core_nodes)
+                self.U_node, self.core_nodes
+            )
             up_link, down_link = self.find_current_direction(
-                self.U_link, self.core_links)
+                self.U_link, self.core_links
+            )
 
             # find wet and partial wet nodes and links
             wet_node, wet_node_up, wet_node_down = self.find_wet_grids(
-                self.h_node, self.core_nodes, up_node, down_node)
+                self.h_node, self.core_nodes, up_node, down_node
+            )
             wet_link, wet_link_up, wet_link_down = self.find_wet_grids(
-                self.h_link, self.core_links, up_link, down_link)
-            partial_wet_node, partial_wet_node_up, partial_wet_node_down = self.find_partial_wet_grids(
-                self.h_node, self.core_nodes, up_node, down_node)
-            partial_wet_link, partial_wet_link_up, partial_wet_link_down = self.find_partial_wet_grids(
-                self.h_link, self.core_links, up_link, down_link)
+                self.h_link, self.core_links, up_link, down_link
+            )
+            (
+                partial_wet_node,
+                partial_wet_node_up,
+                partial_wet_node_down,
+            ) = self.find_partial_wet_grids(
+                self.h_node, self.core_nodes, up_node, down_node
+            )
+            (
+                partial_wet_link,
+                partial_wet_link_up,
+                partial_wet_link_down,
+            ) = self.find_partial_wet_grids(
+                self.h_link, self.core_links, up_link, down_link
+            )
 
             # Calculate advection phases of h, U and C
             U_flat = np.zeros(self.U_link.shape)
-            U_flat[1, :] = 2 * self.U_link[1, :] * self.h_link[0, :] \
-                / (self.h_link[0, :] + self.h_link[1, :]) \
-                - 2 * self.h_link[1, :] * self.U_link[0, :] \
-                * self.h_link[0, :] / ((self.h_link[0, :] + self.h_link[1, :])
-                                       * self.h_link[0, :]) - self.U_link[1, :]
+            U_flat[1, :] = (
+                2
+                * self.U_link[1, :]
+                * self.h_link[0, :]
+                / (self.h_link[0, :] + self.h_link[1, :])
+                - 2
+                * self.h_link[1, :]
+                * self.U_link[0, :]
+                * self.h_link[0, :]
+                / ((self.h_link[0, :] + self.h_link[1, :]) * self.h_link[0, :])
+                - self.U_link[1, :]
+            )
 
             self.rcip_1d_advection(
                 self.h_node,
@@ -402,7 +436,8 @@ class TwoLayerTurbidityCurrent():
                 self.dx,
                 dt_local,
                 out_f=self.h_node_temp,
-                out_dfdx=self.dhdx_temp)
+                out_dfdx=self.dhdx_temp,
+            )
             self.rcip_1d_advection(
                 self.U_link,
                 self.dUdx,
@@ -417,7 +452,8 @@ class TwoLayerTurbidityCurrent():
                 self.dx,
                 dt_local,
                 out_f=self.U_link_temp,
-                out_dfdx=self.dUdx_temp)
+                out_dfdx=self.dUdx_temp,
+            )
             self.rcip_1d_advection(
                 self.C_node,
                 self.dCdx,
@@ -431,7 +467,8 @@ class TwoLayerTurbidityCurrent():
                 self.dx,
                 dt_local,
                 out_f=self.C_node_temp,
-                out_dfdx=self.dCdx_temp)
+                out_dfdx=self.dCdx_temp,
+            )
 
             # slip condition is applied to partial wet node and link
             # wet_front = ((self.h_node[self.core_nodes][1] > self.h_e) &
@@ -447,8 +484,7 @@ class TwoLayerTurbidityCurrent():
             #     wet_front_node] - dt_local * self.U_node_temp[
             #         wet_front_node] * (self.h_node[wet_front_node] -
             #                            self.h_node[wet_front_up]) / self.dx
-            self.U_node_temp[partial_wet_node][1] = self.U_node[
-                partial_wet_node_up][1]
+            self.U_node_temp[partial_wet_node][1] = self.U_node[partial_wet_node_up][1]
             # self.U_link_temp[partial_wet_link][1] = self.U_link[
             #     partial_wet_link_up][1]
             # self.h_node_temp[partial_wet_node] = self.h_node[
@@ -465,7 +501,8 @@ class TwoLayerTurbidityCurrent():
                 self.dx,
                 dt_local,
                 out_f=self.h_node_temp,
-                out_dfdx=self.dhdx_temp)
+                out_dfdx=self.dhdx_temp,
+            )
             self.rcip_1d_advection(
                 self.C_node,
                 self.dCdx,
@@ -476,43 +513,55 @@ class TwoLayerTurbidityCurrent():
                 self.dx,
                 dt_local,
                 out_f=self.C_node_temp,
-                out_dfdx=self.dCdx_temp)
+                out_dfdx=self.dCdx_temp,
+            )
 
             # Update values to store results of advection phase
-            self.update_values(self.h_node_temp, self.h_link_temp,
-                               self.U_node_temp, self.U_link_temp,
-                               self.C_node_temp, self.C_link_temp)
+            self.update_values(
+                self.h_node_temp,
+                self.h_link_temp,
+                self.U_node_temp,
+                self.U_link_temp,
+                self.C_node_temp,
+                self.C_link_temp,
+            )
             self.copy_temp_to_main_variables()
 
             # Calculate non-advection phase of h and U
             for i in range(self.implicit_repeat_num):
 
-                self.calc_G_h_flat(self.h_node_temp,
-                                   self.U_node_temp,
-                                   self.C_node_temp,
-                                   self.U_link_temp,
-                                   core=wet_node,
-                                   up=wet_node_up,
-                                   down=wet_node_down,
-                                   out_G=self.G_h)
+                self.calc_G_h_flat(
+                    self.h_node_temp,
+                    self.U_node_temp,
+                    self.C_node_temp,
+                    self.U_link_temp,
+                    core=wet_node,
+                    up=wet_node_up,
+                    down=wet_node_down,
+                    out_G=self.G_h,
+                )
 
-                self.calc_G_U_flat(self.h_link_temp,
-                                   self.U_link_temp,
-                                   self.C_link_temp,
-                                   self.h_node_temp,
-                                   self.C_node_temp,
-                                   core=wet_link,
-                                   up=wet_link_up,
-                                   down=wet_link_down,
-                                   out_G=self.G_U)
+                self.calc_G_U_flat(
+                    self.h_link_temp,
+                    self.U_link_temp,
+                    self.C_link_temp,
+                    self.h_node_temp,
+                    self.C_node_temp,
+                    core=wet_link,
+                    up=wet_link_up,
+                    down=wet_link_down,
+                    out_G=self.G_U,
+                )
 
-                self.calc_G_C(self.h_node_temp,
-                              self.U_node_temp,
-                              self.C_node_temp,
-                              core=wet_node,
-                              up=wet_node_up,
-                              down=wet_node_down,
-                              out_G=self.G_C)
+                self.calc_G_C(
+                    self.h_node_temp,
+                    self.U_node_temp,
+                    self.C_node_temp,
+                    core=wet_node,
+                    up=wet_node_up,
+                    down=wet_node_down,
+                    out_G=self.G_C,
+                )
 
                 self.cip_1d_nonadvection(
                     self.h_node,
@@ -525,7 +574,8 @@ class TwoLayerTurbidityCurrent():
                     self.dx,
                     dt_local,
                     out_f=self.h_node_temp,
-                    out_dfdx=self.dhdx_temp)
+                    out_dfdx=self.dhdx_temp,
+                )
 
                 self.cip_1d_nonadvection(
                     self.U_link,
@@ -538,7 +588,8 @@ class TwoLayerTurbidityCurrent():
                     self.dx,
                     dt_local,
                     out_f=self.U_link_temp,
-                    out_dfdx=self.dUdx_temp)
+                    out_dfdx=self.dUdx_temp,
+                )
 
                 self.cip_1d_nonadvection(
                     self.C_node,
@@ -551,24 +602,30 @@ class TwoLayerTurbidityCurrent():
                     self.dx,
                     dt_local,
                     out_f=self.C_node_temp,
-                    out_dfdx=self.dCdx_temp)
-                
+                    out_dfdx=self.dCdx_temp,
+                )
 
+                self.update_values(
+                    self.h_node_temp,
+                    self.h_link_temp,
+                    self.U_node_temp,
+                    self.U_link_temp,
+                    self.C_node_temp,
+                    self.C_link_temp,
+                )
 
-                self.update_values(self.h_node_temp, self.h_link_temp,
-                                   self.U_node_temp, self.U_link_temp,
-                                   self.C_node_temp, self.C_link_temp)
-            
             # Artificial viscosity for numerical stability
             self.calc_artificial_viscosity(
-                                        self.h_node_temp, 
-                                        self.h_link_temp,
-                                        self.U_node_temp,
-                                        self.U_link_temp,
-                                        self.C_node_temp,
-                                        self.C_link_temp,
-                                        wet_node, dt_local,
-                                        out_U=self.U_link_temp)
+                self.h_node_temp,
+                self.h_link_temp,
+                self.U_node_temp,
+                self.U_link_temp,
+                self.C_node_temp,
+                self.C_link_temp,
+                wet_node,
+                dt_local,
+                out_U=self.U_link_temp,
+            )
 
             # Copy temp values to main variables
             self.copy_temp_to_main_variables()
@@ -578,8 +635,19 @@ class TwoLayerTurbidityCurrent():
 
         # increment the total elapsed time
         self.elapsed_time = self.elapsed_time + elapsed_time_local
-    
-    def calc_artificial_viscosity(self, h_node, h_link, U_node, U_link, C_node, C_link, wet_nodes, dt_local, out_U=None):
+
+    def calc_artificial_viscosity(
+        self,
+        h_node,
+        h_link,
+        U_node,
+        U_link,
+        C_node,
+        C_link,
+        wet_nodes,
+        dt_local,
+        out_U=None,
+    ):
         """Calculate the artificial viscosity based on Ogata and Yabe (1998)
             Only the velocity is modified at links of compressive region
 
@@ -639,28 +707,42 @@ class TwoLayerTurbidityCurrent():
 
         # basic parameters for artificial viscosity
         Cs = np.zeros_like(h_node)
-        Cs[wet_nodes] = np.sqrt(self.R * self.g * self.C_node[wet_nodes] * self.h_t[wet_nodes])
+        Cs[wet_nodes] = np.sqrt(
+            self.R * self.g * self.C_node[wet_nodes] * h_t[wet_nodes]
+        )
 
         # no directional dependent expression of artificial viscosity
         # calculated only at grids where flow divergence is negative
         div = np.zeros_like(h_node)
         div[:] = 0
-        div[wet_nodes] = (U_t_link[idown_link[wet_nodes]] - U_t_link[iup_link[wet_nodes]]) / dx
+        div[wet_nodes] = (
+            U_t_link[idown_link[wet_nodes]] - U_t_link[iup_link[wet_nodes]]
+        ) / dx
         compress = div[wet_nodes] < 0
         q = np.zeros_like(h_node)
         q[wet_nodes[~compress]] = 0
         q[wet_nodes[compress]] = (
-            2.0 * h_t[wet_nodes[compress]]) / Rg * nu_a * dx * (
-                -Cs[wet_nodes[compress]] * div[wet_nodes[compress]] +
-                1.5 * div[wet_nodes[compress]] * div[wet_nodes[compress]] * dx)
+            (2.0 * h_t[wet_nodes[compress]])
+            / Rg
+            * nu_a
+            * dx
+            * (
+                -Cs[wet_nodes[compress]] * div[wet_nodes[compress]]
+                + 1.5 * div[wet_nodes[compress]] * div[wet_nodes[compress]] * dx
+            )
+        )
 
         # modify flow velocity based on artificial viscosity
-        out_U[wet_nodes] -= 0.5 * Rg / h_link[wet_nodes] * (
-            q[idown[wet_nodes]] -
-            q[iup[wet_nodes]]) / dx * dt
+        out_U[wet_nodes] -= (
+            0.5
+            * Rg
+            / h_link[wet_nodes]
+            * (q[idown[wet_nodes]] - q[iup[wet_nodes]])
+            / dx
+            * dt
+        )
 
         return out_U
-
 
     def find_wet_grids(self, h, core, up, down):
         """Find wet nodes or links
@@ -693,7 +775,7 @@ class TwoLayerTurbidityCurrent():
             wet_down: tuple
                indeces of downcurrent grids
         """
-        wet = (h[core][1] > self.h_e)
+        wet = h[core][1] > self.h_e
         wet_grids = tuple((core[0][:, wet], core[1][:, wet]))
         wet_up = tuple((up[0][:, wet], up[1][:, wet]))
         wet_down = tuple((down[0][:, wet], down[1][:, wet]))
@@ -732,12 +814,10 @@ class TwoLayerTurbidityCurrent():
             wet_down: tuple
                indeces of downcurrent grids
         """
-        partial_wet = ((h[core][1] < self.h_e) & (h[up][1] >= self.h_e))
-        partial_wet_grids = tuple(
-            (core[0][:, partial_wet], core[1][:, partial_wet]))
+        partial_wet = (h[core][1] < self.h_e) & (h[up][1] >= self.h_e)
+        partial_wet_grids = tuple((core[0][:, partial_wet], core[1][:, partial_wet]))
         partial_wet_up = tuple((up[0][:, partial_wet], up[1][:, partial_wet]))
-        partial_wet_down = tuple(
-            (down[0][:, partial_wet], core[1][:, partial_wet]))
+        partial_wet_down = tuple((down[0][:, partial_wet], core[1][:, partial_wet]))
 
         return partial_wet_grids, partial_wet_up, partial_wet_down
 
@@ -769,10 +849,16 @@ class TwoLayerTurbidityCurrent():
         U_abs = np.abs(U[0, :] - U[1, :])
         flow_exist = np.where((h[1, :] > self.h_init * 10) & (U_abs > 0))
 
-        Ri[flow_exist] = self.R * self.g * C[1, flow_exist] * \
-            h[1, flow_exist] / U_abs[flow_exist] ** 2
-        e_w[flow_exist] = 0.075 / \
-            np.sqrt(1 + 718. + Ri[flow_exist] ** 2.4)  # Parker et al. (1987)
+        Ri[flow_exist] = (
+            self.R
+            * self.g
+            * C[1, flow_exist]
+            * h[1, flow_exist]
+            / U_abs[flow_exist] ** 2
+        )
+        e_w[flow_exist] = 0.075 / np.sqrt(
+            1 + 718.0 + Ri[flow_exist] ** 2.4
+        )  # Parker et al. (1987)
 
         return e_w
 
@@ -855,8 +941,9 @@ class TwoLayerTurbidityCurrent():
 
         # process downstream boundary conditions
         h_node[1, -1] = h_node[1, -2]
-        h_node[0, -1] = ambient_thick + turb_thick - \
-            self.grid.eta[-1] - h_node[1, -1]  # sea surface is flat
+        h_node[0, -1] = (
+            ambient_thick + turb_thick - self.grid.eta[-1] - h_node[1, -1]
+        )  # sea surface is flat
         C_node[1, -1] = C_node[1, -2]  # no gradient in t.c. layer
 
         # remove negative values
@@ -864,9 +951,9 @@ class TwoLayerTurbidityCurrent():
         C_node[1, C_node[1, :] < self.C_init] = self.C_init
 
         # update node and link values
-        h_link[:, :] = (h_node[:, :-1] + h_node[:, 1:]) / 2.
-        U_node[:, 1:-1] = (U_link[:, 0:-1] + U_link[:, 1:]) / 2.
-        C_link[:, :] = (C_node[:, :-1] + C_node[:, 1:]) / 2.
+        h_link[:, :] = (h_node[:, :-1] + h_node[:, 1:]) / 2.0
+        U_node[:, 1:-1] = (U_link[:, 0:-1] + U_link[:, 1:]) / 2.0
+        C_link[:, :] = (C_node[:, :-1] + C_node[:, 1:]) / 2.0
 
         # re-process boundary nodes/links to maintain constant discharge
         U_link[:, 0] = (U_node[:, 0] * h_node[:, 0]) / h_link[:, 0]
@@ -876,15 +963,16 @@ class TwoLayerTurbidityCurrent():
         U_node[1, -1] = U_node[1, -2]
 
         # update values of ambient water
-        self.h_node[0, :] = ambient_thick + turb_thick - self.grid.eta - \
-            self.h_node[1, :]  # water surface is flat
-        self.h_link[0, :] = ambient_thick + turb_thick - self.eta_link - \
-            self.h_link[1, :]  # water surface is flat
+        self.h_node[0, :] = (
+            ambient_thick + turb_thick - self.grid.eta - self.h_node[1, :]
+        )  # water surface is flat
+        self.h_link[0, :] = (
+            ambient_thick + turb_thick - self.eta_link - self.h_link[1, :]
+        )  # water surface is flat
         self.U_link[0, :] = ambient_vel * ambient_thick / self.h_link[0, :]
         self.U_node[0, :] = ambient_vel * ambient_thick / self.h_node[0, :]
 
-    def update_values_flat(self, h_node, h_link, U_node, U_link, C_node,
-                           C_link):
+    def update_values_flat(self, h_node, h_link, U_node, U_link, C_node, C_link):
         """ Update values stored in grids, and process boundary conditions
             Mapping values at nodes and links each other
         """
@@ -911,27 +999,23 @@ class TwoLayerTurbidityCurrent():
         C_node[1, C_node[1, :] < self.C_init] = self.C_init
 
         # update node and link values
-        h_link[:, :] = (h_node[:, :-1] + h_node[:, 1:]) / 2.
-        U_node[:, 1:-1] = (U_link[:, 0:-1] + U_link[:, 1:]) / 2.
-        C_link[:, :] = (C_node[:, :-1] + C_node[:, 1:]) / 2.
+        h_link[:, :] = (h_node[:, :-1] + h_node[:, 1:]) / 2.0
+        U_node[:, 1:-1] = (U_link[:, 0:-1] + U_link[:, 1:]) / 2.0
+        C_link[:, :] = (C_node[:, :-1] + C_node[:, 1:]) / 2.0
 
         # update values of ambient water
-        self.h_node[0, :] = ambient_thick + turb_thick - self.grid.eta - \
-            self.h_node[1, :]  # water surface is flat
-        self.h_link[0, :] = ambient_thick + turb_thick - self.eta_link - \
-            self.h_link[1, :]  # water surface is flat
+        self.h_node[0, :] = (
+            ambient_thick + turb_thick - self.grid.eta - self.h_node[1, :]
+        )  # water surface is flat
+        self.h_link[0, :] = (
+            ambient_thick + turb_thick - self.eta_link - self.h_link[1, :]
+        )  # water surface is flat
         self.U_link[0, :] = ambient_vel * ambient_thick / self.h_link[0, :]
         self.U_node[0, :] = ambient_vel * ambient_thick / self.h_node[0, :]
 
-    def calc_G_h(self,
-                 h_node,
-                 U_node,
-                 C_node,
-                 U_link,
-                 core=None,
-                 up=None,
-                 down=None,
-                 out_G=None):
+    def calc_G_h(
+        self, h_node, U_node, C_node, U_link, core=None, up=None, down=None, out_G=None
+    ):
         """ Calculate non-advection terms for flow heights
 
             Parameter
@@ -969,23 +1053,22 @@ class TwoLayerTurbidityCurrent():
         dx = self.dx
 
         # calculate non-advection terms
-        out_G[0, icore] = - e_w[icore] * \
-            np.abs(U_t[icore] - U_a[icore]) - h_a[icore] * \
-            (U_a_link[idown_link] - U_a_link[iup_link]) / (dx)  # G_ha
-        out_G[1, icore] = e_w[icore] * np.abs(U_t[icore] - U_a[icore]) \
-            - h_t[icore] * (U_t_link[idown_link] - U_t_link[iup_link]) / (dx)  # G_ht
+        out_G[0, icore] = -e_w[icore] * np.abs(U_t[icore] - U_a[icore]) - h_a[icore] * (
+            U_a_link[idown_link] - U_a_link[iup_link]
+        ) / (
+            dx
+        )  # G_ha
+        out_G[1, icore] = e_w[icore] * np.abs(U_t[icore] - U_a[icore]) - h_t[icore] * (
+            U_t_link[idown_link] - U_t_link[iup_link]
+        ) / (
+            dx
+        )  # G_ht
 
         return out_G
 
-    def calc_G_h_flat(self,
-                      h_node,
-                      U_node,
-                      C_node,
-                      U_link,
-                      core=None,
-                      up=None,
-                      down=None,
-                      out_G=None):
+    def calc_G_h_flat(
+        self, h_node, U_node, C_node, U_link, core=None, up=None, down=None, out_G=None
+    ):
         """Calculate non-advection terms for flow heights
 
             Parameter
@@ -1026,22 +1109,27 @@ class TwoLayerTurbidityCurrent():
         Q = U_a * h_a + U_t * h_t
 
         # calculate non-advection terms
-        out_G[1, icore] = - h_t[icore] * (U_t_link[idown_link] - U_t_link[iup_link]) / (dx) \
-            + e_w[icore] * np.abs((U_t[icore] * H_minus_eta[icore] - Q[icore])
-                                  / (H_minus_eta[icore] - h_t[icore]))
+        out_G[1, icore] = -h_t[icore] * (U_t_link[idown_link] - U_t_link[iup_link]) / (
+            dx
+        ) + e_w[icore] * np.abs(
+            (U_t[icore] * H_minus_eta[icore] - Q[icore])
+            / (H_minus_eta[icore] - h_t[icore])
+        )
 
         return out_G
 
-    def calc_G_U(self,
-                 h_link,
-                 U_link,
-                 C_link,
-                 h_node,
-                 C_node,
-                 core=None,
-                 up=None,
-                 down=None,
-                 out_G=None):
+    def calc_G_U(
+        self,
+        h_link,
+        U_link,
+        C_link,
+        h_node,
+        C_node,
+        core=None,
+        up=None,
+        down=None,
+        out_G=None,
+    ):
         """ Calculate non-advection terms of flow velocities
 
             Parameter
@@ -1086,32 +1174,53 @@ class TwoLayerTurbidityCurrent():
         idown_node = icore + 1
 
         # calculate non-advection terms
-        out_G[0, icore] = -g * (eta[idown] - eta[iup]) / \
-            (2 * dx) - g * ((h_a_node[idown_node] + h_t_node[idown_node]) - (h_a_node[iup_node] + h_t_node[iup_node]))\
-            / (dx) - 2 * nu_t / \
-            h_a[icore] * (U_a[icore] - U_t[icore]) / (h_a[icore] + h_t[icore]) + \
-            e_w[icore] * np.abs(U_t[icore] - U_a[icore]) * \
-            U_a[icore] / h_a[icore]
-        out_G[1, icore] = -(1 + R * C[icore]) * g * (eta[idown] - eta[iup]) \
-            / (2 * dx) - g * ((h_a_node[idown_node] + h_t_node[idown_node]) - (h_a_node[iup_node] + h_t_node[iup_node]))\
-            / (dx) - R * C[icore] * g * (h_t_node[idown_node] - h_t_node[iup_node]) / (
-            dx) + 2 * nu_t / h_t[icore] * (U_a[icore] - U_t[icore]) / \
-            (h_a[icore] + h_t[icore]) - Cf * U_t[icore] * np.abs(U_t[icore]) \
-            / h_t[icore] - e_w[icore] * (U_t[icore] - U_a[icore]) * U_t[icore] \
+        out_G[0, icore] = (
+            -g * (eta[idown] - eta[iup]) / (2 * dx)
+            - g
+            * (
+                (h_a_node[idown_node] + h_t_node[idown_node])
+                - (h_a_node[iup_node] + h_t_node[iup_node])
+            )
+            / (dx)
+            - 2
+            * nu_t
+            / h_a[icore]
+            * (U_a[icore] - U_t[icore])
+            / (h_a[icore] + h_t[icore])
+            + e_w[icore] * np.abs(U_t[icore] - U_a[icore]) * U_a[icore] / h_a[icore]
+        )
+        out_G[1, icore] = (
+            -(1 + R * C[icore]) * g * (eta[idown] - eta[iup]) / (2 * dx)
+            - g
+            * (
+                (h_a_node[idown_node] + h_t_node[idown_node])
+                - (h_a_node[iup_node] + h_t_node[iup_node])
+            )
+            / (dx)
+            - R * C[icore] * g * (h_t_node[idown_node] - h_t_node[iup_node]) / (dx)
+            + 2
+            * nu_t
             / h_t[icore]
+            * (U_a[icore] - U_t[icore])
+            / (h_a[icore] + h_t[icore])
+            - Cf * U_t[icore] * np.abs(U_t[icore]) / h_t[icore]
+            - e_w[icore] * (U_t[icore] - U_a[icore]) * U_t[icore] / h_t[icore]
+        )
 
         return out_G
 
-    def calc_G_U_flat(self,
-                      h_link,
-                      U_link,
-                      C_link,
-                      h_node,
-                      C_node,
-                      core=None,
-                      up=None,
-                      down=None,
-                      out_G=None):
+    def calc_G_U_flat(
+        self,
+        h_link,
+        U_link,
+        C_link,
+        h_node,
+        C_node,
+        core=None,
+        up=None,
+        down=None,
+        out_G=None,
+    ):
         """ Calculate non-advection terms of flow velocities
 
             Parameter
@@ -1155,38 +1264,52 @@ class TwoLayerTurbidityCurrent():
         Q = U_a * h_a + U_t * h_t
 
         # calculate non-advection terms
-        out_G[1, icore] = -(
-            (U_t[icore]**2 * h_a[icore]) / (h_t[icore] * H_minus_eta[icore]) +
-            (R * C[icore] * g * (h_a[icore])) / (H_minus_eta[icore]) -
-            (2 * U_t[icore] * (Q[icore] - U_t[icore] * h_t[icore])) /
-            (H_minus_eta[icore] *
-             (h_a[icore])) + ((Q[icore] - U_t[icore] * h_t[icore])**2) /
-            (H_minus_eta[icore] *
-             (H_minus_eta[icore] - h_t[icore])**2) - (U_t[icore]**2) /
-            (h_t[icore])) * (h_t_node[idown_node] - h_t_node[iup_node]) / (dx) - (
-                (R * C[icore] * g * h_a[icore]) / (H_minus_eta[icore]) +
-                ((Q[icore] - U_t[icore] * h_t[icore])**2) /
-                (H_minus_eta[icore] *
-                 (H_minus_eta[icore] - h_t[icore])**2)) * (
-                     eta[idown] - eta[iup]) / (2 * dx) - 1 / h_t[icore] * (
-                         (Cf * U_t[icore] * np.abs(U_t[icore]) *
-                          (h_a[icore]) / H_minus_eta[icore] - 2 * nu_t *
-                          (Q[icore] - U_t[icore] * H_minus_eta[icore]) /
-                          (H_minus_eta[icore] *
-                           (H_minus_eta[icore] - h_t[icore])) +
-                          e_w[icore] * U_t[icore] * np.abs(
-                              (U_t[icore] * H_minus_eta[icore] - Q[icore]) /
-                              (H_minus_eta[icore] - h_t[icore]))))
+        out_G[1, icore] = (
+            -(
+                (U_t[icore] ** 2 * h_a[icore]) / (h_t[icore] * H_minus_eta[icore])
+                + (R * C[icore] * g * (h_a[icore])) / (H_minus_eta[icore])
+                - (2 * U_t[icore] * (Q[icore] - U_t[icore] * h_t[icore]))
+                / (H_minus_eta[icore] * (h_a[icore]))
+                + ((Q[icore] - U_t[icore] * h_t[icore]) ** 2)
+                / (H_minus_eta[icore] * (H_minus_eta[icore] - h_t[icore]) ** 2)
+                - (U_t[icore] ** 2) / (h_t[icore])
+            )
+            * (h_t_node[idown_node] - h_t_node[iup_node])
+            / (dx)
+            - (
+                (R * C[icore] * g * h_a[icore]) / (H_minus_eta[icore])
+                + ((Q[icore] - U_t[icore] * h_t[icore]) ** 2)
+                / (H_minus_eta[icore] * (H_minus_eta[icore] - h_t[icore]) ** 2)
+            )
+            * (eta[idown] - eta[iup])
+            / (2 * dx)
+            - 1
+            / h_t[icore]
+            * (
+                (
+                    Cf
+                    * U_t[icore]
+                    * np.abs(U_t[icore])
+                    * (h_a[icore])
+                    / H_minus_eta[icore]
+                    - 2
+                    * nu_t
+                    * (Q[icore] - U_t[icore] * H_minus_eta[icore])
+                    / (H_minus_eta[icore] * (H_minus_eta[icore] - h_t[icore]))
+                    + e_w[icore]
+                    * U_t[icore]
+                    * np.abs(
+                        (U_t[icore] * H_minus_eta[icore] - Q[icore])
+                        / (H_minus_eta[icore] - h_t[icore])
+                    )
+                )
+            )
+        )
         return out_G
 
-    def calc_G_C(self,
-                 h_node,
-                 U_node,
-                 C_node,
-                 core=None,
-                 up=None,
-                 down=None,
-                 out_G=None):
+    def calc_G_C(
+        self, h_node, U_node, C_node, core=None, up=None, down=None, out_G=None
+    ):
         """ Calculate non-advection terms for concentration
 
             Parameter
@@ -1227,9 +1350,10 @@ class TwoLayerTurbidityCurrent():
         e_s = self.get_es(U_t)
 
         # calculate non-advection terms
-        out_G[1, icore] = (ws * (e_s[icore] - r_0 * C[icore]) -
-                           e_w[icore] * C[icore] *
-                           np.abs(U_t[icore] - U_a[icore])) / h_t[icore]
+        out_G[1, icore] = (
+            ws * (e_s[icore] - r_0 * C[icore])
+            - e_w[icore] * C[icore] * np.abs(U_t[icore] - U_a[icore])
+        ) / h_t[icore]
 
         return out_G
 
@@ -1262,19 +1386,19 @@ class TwoLayerTurbidityCurrent():
 
         # calculate subordinate parameters
         Rp = np.sqrt(R * g * Ds) * Ds / nu
-        u_star = Cf * U**2
+        u_star = Cf * U ** 2
         sus_index = u_star / ws
 
         # coefficients for calculation
-        a = 7.8 * 10**-7
+        a = 7.8 * 10 ** -7
         alpha = 0.6
         p = 1.0
 
         # calculate entrainemnt rate
-        Z = sus_index * Rp**alpha
+        Z = sus_index * Rp ** alpha
         # nonzero = Z > 0
         # es[nonzero] = p * a * Z[nonzero]**5 / (1 + (a / 0.3) * Z[nonzero]**5)
-        es = p * a * Z**5 / (1 + (a / 0.3) * Z**5)
+        es = p * a * Z ** 5 / (1 + (a / 0.3) * Z ** 5)
 
         return es
 
@@ -1295,24 +1419,16 @@ class TwoLayerTurbidityCurrent():
         nu = self.nu
 
         # Coefficients for natural sands
-        C_1 = 18.
+        C_1 = 18.0
         C_2 = 1.0
 
-        ws = R * g * Ds**2 / (C_1 * nu + (0.75 * C_2 * R * g * Ds**3)**0.5)
+        ws = R * g * Ds ** 2 / (C_1 * nu + (0.75 * C_2 * R * g * Ds ** 3) ** 0.5)
 
         return ws
 
-    def cip_1d_advection(self,
-                         f,
-                         dfdx,
-                         u,
-                         core,
-                         up,
-                         down,
-                         dx,
-                         dt,
-                         out_f=None,
-                         out_dfdx=None):
+    def cip_1d_advection(
+        self, f, dfdx, u, core, up, down, dx, dt, out_f=None, out_dfdx=None
+    ):
         """ calculate 1 step of advection phase by CIP method
         """
 
@@ -1326,31 +1442,26 @@ class TwoLayerTurbidityCurrent():
             out_dfdx[:, -1] = dfdx[:, -1]
 
         # advection phase
-        D = -np.where(u > 0., 1.0, -1.0) * dx
+        D = -np.where(u > 0.0, 1.0, -1.0) * dx
         xi = -u * dt
 
-        a = (dfdx[core] + dfdx[up]) / (D[core] ** 2)\
-            + 2 * (f[core] - f[up]) / (D[core] ** 3)
-        b = 3 * (f[up] - f[core]) / (D[core] ** 2)\
+        a = (dfdx[core] + dfdx[up]) / (D[core] ** 2) + 2 * (f[core] - f[up]) / (
+            D[core] ** 3
+        )
+        b = (
+            3 * (f[up] - f[core]) / (D[core] ** 2)
             - (2 * dfdx[core] + dfdx[up]) / D[core]
-        out_f[core] = a * (xi[core] ** 3) + b * (xi[core] ** 2)\
-            + dfdx[core] * xi[core] + f[core]
-        out_dfdx[core] = 3 * a * (xi[core] ** 2) + 2 * b * xi[core]\
-            + dfdx[core]
+        )
+        out_f[core] = (
+            a * (xi[core] ** 3) + b * (xi[core] ** 2) + dfdx[core] * xi[core] + f[core]
+        )
+        out_dfdx[core] = 3 * a * (xi[core] ** 2) + 2 * b * xi[core] + dfdx[core]
 
         return out_f, out_dfdx
 
-    def rcip_1d_advection(self,
-                          f,
-                          dfdx,
-                          u,
-                          core,
-                          up,
-                          down,
-                          dx,
-                          dt,
-                          out_f=None,
-                          out_dfdx=None):
+    def rcip_1d_advection(
+        self, f, dfdx, u, core, up, down, dx, dt, out_f=None, out_dfdx=None
+    ):
         """ calculate 1 step of advection phase by rational function
             CIP method.
 
@@ -1406,45 +1517,40 @@ class TwoLayerTurbidityCurrent():
             out_dfdx[:, -1] = dfdx[:, -1]
 
         # advection phase
-        D = -np.where(u > 0., 1.0, -1.0) * dx
+        D = -np.where(u > 0.0, 1.0, -1.0) * dx
         xi = -u * dt
         BB = np.ones(D[core].shape)
         alpha = np.zeros(D[core].shape)
         S = (f[up] - f[core]) / D[core]
         dz_index = (dfdx[up] - S) == 0.0
         BB[dz_index] = -1.0 / D[core][dz_index]
-        BB[~dz_index] = (np.abs(
-            (S[~dz_index] - dfdx[core][~dz_index]) /
-            (dfdx[up][~dz_index] - S[~dz_index] + 1.e-10)) -
-                         1.0) / D[core][~dz_index]
-        alpha[(S - dfdx[core]) / (dfdx[up] - S + 1.e-10) >= 0.0] = 1.0
+        BB[~dz_index] = (
+            np.abs(
+                (S[~dz_index] - dfdx[core][~dz_index])
+                / (dfdx[up][~dz_index] - S[~dz_index] + 1.0e-10)
+            )
+            - 1.0
+        ) / D[core][~dz_index]
+        alpha[(S - dfdx[core]) / (dfdx[up] - S + 1.0e-10) >= 0.0] = 1.0
 
-        a = (dfdx[core] - S + (dfdx[up] - S) *
-             (1.0 + alpha * BB * D[core])) / (D[core]**2)
+        a = (dfdx[core] - S + (dfdx[up] - S) * (1.0 + alpha * BB * D[core])) / (
+            D[core] ** 2
+        )
         b = S * alpha * BB + (S - dfdx[core]) / D[core] - a * D[core]
         c = dfdx[core] + f[core] * alpha * BB
 
-        out_f[core] = (((a * xi[core] + b) * xi[core] + c)
-                       * xi[core] + f[core]) \
-            / (1.0 + alpha * BB * xi[core])
-        out_dfdx[core] = ((3. * a * xi[core] + 2. * b) * xi[core] + c) \
-            / (1.0 + alpha * BB * xi[core]) \
-            - out_f[core] * alpha * BB / (1.0 + alpha * BB * xi[core])
+        out_f[core] = (((a * xi[core] + b) * xi[core] + c) * xi[core] + f[core]) / (
+            1.0 + alpha * BB * xi[core]
+        )
+        out_dfdx[core] = ((3.0 * a * xi[core] + 2.0 * b) * xi[core] + c) / (
+            1.0 + alpha * BB * xi[core]
+        ) - out_f[core] * alpha * BB / (1.0 + alpha * BB * xi[core])
 
         return out_f, out_dfdx
 
-    def cip_1d_nonadvection(self,
-                            f,
-                            dfdx,
-                            u,
-                            G,
-                            core,
-                            up,
-                            down,
-                            dx,
-                            dt,
-                            out_f=None,
-                            out_dfdx=None):
+    def cip_1d_nonadvection(
+        self, f, dfdx, u, G, core, up, down, dx, dt, out_f=None, out_dfdx=None
+    ):
         """calculate 1 step of non-advection phase by CIP method
         """
 
@@ -1457,14 +1563,16 @@ class TwoLayerTurbidityCurrent():
             out_dfdx[:, 0] = dfdx[:, 0]
             out_dfdx[:, -1] = dfdx[:, -1]
 
-        D = -np.where(u > 0., 1.0, -1.0) * dx
+        D = -np.where(u > 0.0, 1.0, -1.0) * dx
         xi = -u * dt
 
         # non-advection term
         out_f[core] = f[core] + G[core] * dt
-        out_dfdx[core] = dfdx[core] \
-            + ((out_f[down] - f[down]) - (out_f[up] - f[up])) / \
-            (-2 * D[core]) - dfdx[core] * (xi[down] - xi[up]) / (2 * D[core])
+        out_dfdx[core] = (
+            dfdx[core]
+            + ((out_f[down] - f[down]) - (out_f[up] - f[up])) / (-2 * D[core])
+            - dfdx[core] * (xi[down] - xi[up]) / (2 * D[core])
+        )
 
         return out_f, out_dfdx
 
@@ -1475,18 +1583,24 @@ class TwoLayerTurbidityCurrent():
         self.update_values()
 
         for i in range(len(self.grid.x) - 1):
-            G_h = self.calc_G_h_flat(self.h_node[:, i], self.U_node[:, i],
-                                     self.C_node[:, i], self.U_link[:, i])
-            G_U = self.calc_G_U_flat(self.h_link[:, i], self.U_link[:, i],
-                                     self.C_link[:, i], self.h_node[:, i], self.C_node[:, i])
-            G_C = self.calc_G_C(self.h_node[:, i], self.U_node[:, i],
-                                self.C_node[:, i])
+            G_h = self.calc_G_h_flat(
+                self.h_node[:, i],
+                self.U_node[:, i],
+                self.C_node[:, i],
+                self.U_link[:, i],
+            )
+            G_U = self.calc_G_U_flat(
+                self.h_link[:, i],
+                self.U_link[:, i],
+                self.C_link[:, i],
+                self.h_node[:, i],
+                self.C_node[:, i],
+            )
+            G_C = self.calc_G_C(self.h_node[:, i], self.U_node[:, i], self.C_node[:, i])
 
-    def plot(self,
-             xlim=None,
-             ylim_height=None,
-             ylim_velocity=None,
-             ylim_concentration=None):
+    def plot(
+        self, xlim=None, ylim_height=None, ylim_velocity=None, ylim_concentration=None
+    ):
         """ plot results in a figure, and save it as png image.
         """
 
@@ -1497,7 +1611,7 @@ class TwoLayerTurbidityCurrent():
         if ylim_velocity is None:
             ylim_velocity = [
                 np.min([self.grid.U_t, self.grid.U_a]) * 0.9,
-                np.max([self.grid.U_t, self.grid.U_a]) * 1.1
+                np.max([self.grid.U_t, self.grid.U_a]) * 1.1,
             ]
         if ylim_concentration is None:
             ylim_concentration = [0.00, 5.0]
@@ -1511,51 +1625,50 @@ class TwoLayerTurbidityCurrent():
         axR.cla()
 
         # plot flow height in left figure
-        axL.plot(self.grid.x,
-                 self.grid.h_t + self.grid.eta,
-                 label='turbidity current',
-                 color='r')
-        axL.plot(self.grid.x,
-                 self.grid.h_a + self.grid.h_t + self.grid.eta,
-                 label='water surface',
-                 color='b')
-        axL.plot(self.grid.x, self.grid.eta, label='bed', color='g')
+        axL.plot(
+            self.grid.x,
+            self.grid.h_t + self.grid.eta,
+            label="turbidity current",
+            color="r",
+        )
+        axL.plot(
+            self.grid.x,
+            self.grid.h_a + self.grid.h_t + self.grid.eta,
+            label="water surface",
+            color="b",
+        )
+        axL.plot(self.grid.x, self.grid.eta, label="bed", color="g")
         axL.set_xlim(xlim[0], xlim[1])
         axL.set_ylim(ylim_height[0], ylim_height[1])
-        axL.text(xlim[0], ylim_height[1] - 20,
-                 '$t = $ {:.0f} s.'.format(self.elapsed_time))
-        axL.set_xlabel('Distance (m)')
-        axL.set_ylabel('Elevation (m)')
+        axL.text(
+            xlim[0], ylim_height[1] - 20, "$t = $ {:.0f} s.".format(self.elapsed_time)
+        )
+        axL.set_xlabel("Distance (m)")
+        axL.set_ylabel("Elevation (m)")
         axL.legend()
 
         # plot flow velocity in the middle figure
-        axM.plot(self.grid.x,
-                 self.grid.U_t,
-                 label='turbidity current',
-                 color='r')
-        axM.plot(self.grid.x, self.grid.U_a, label='ambient water', color='b')
+        axM.plot(self.grid.x, self.grid.U_t, label="turbidity current", color="r")
+        axM.plot(self.grid.x, self.grid.U_a, label="ambient water", color="b")
         axM.set_xlim(xlim[0], xlim[1])
         axM.set_ylim(ylim_velocity[0], ylim_velocity[1])
-        axM.set_xlabel('Distance (m)')
-        axM.set_ylabel('Velocity (m/s)')
+        axM.set_xlabel("Distance (m)")
+        axM.set_ylabel("Velocity (m/s)")
         axM.legend()
 
         # plot concentration in the right figure
-        axR.plot(self.grid.x,
-                 self.grid.C * 100,
-                 label='concentration',
-                 color='r')
+        axR.plot(self.grid.x, self.grid.C * 100, label="concentration", color="r")
         axR.set_xlim(xlim[0], xlim[1])
         axR.set_ylim(ylim_concentration[0], ylim_concentration[1])
-        axR.set_xlabel('Distance (m)')
-        axR.set_ylabel('Concentration (%)')
+        axR.set_xlabel("Distance (m)")
+        axR.set_ylabel("Concentration (%)")
 
     def save(self, filename):
         """save the result as a pickled binary data of
            the object TwoLayerTurbidityCurrent
         """
 
-        with open(filename, 'wb') as f:
+        with open(filename, "wb") as f:
             pickle.dump(self, f)
 
 
@@ -1563,17 +1676,16 @@ def load_model(filename):
     """load the object TwoLayerTurbidityCurrent
     """
 
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         tc = pickle.load(f)
-        tc.fig, (tc.axL, tc.axM, tc.axR) = plt.subplots(ncols=3,
-                                                        figsize=(25, 6))
+        tc.fig, (tc.axL, tc.axM, tc.axR) = plt.subplots(ncols=3, figsize=(25, 6))
         return tc
 
     return None
 
 
 if __name__ == "__main__":
-    grid = Grid(number_of_grids=200, spacing=20.0, filename='testtopo.csv')  # Grid
+    grid = Grid(number_of_grids=200, spacing=20.0, filename="testtopo.csv")  # Grid
 
     tc = TwoLayerTurbidityCurrent(
         grid=grid,
@@ -1581,7 +1693,7 @@ if __name__ == "__main__":
         ambient_vel=0.3,  # ambient water velocity at upstream end
         turb_thick=5.0,  # thickness of turbidity current at upstream end
         ambient_thick=100.0,  # thickness of ambient water
-        Ds=80 * 10**-6,  # grain size
+        Ds=80 * 10 ** -6,  # grain size
         concentration=0.01,  # sediment concentration
         alpha=0.5,  # value for numerical stability (must be < 1.0)
         implicit_repeat_num=5,  # value for numerical stability (must be > 2)
@@ -1592,14 +1704,13 @@ if __name__ == "__main__":
     steps = 500
     for i in range(steps):
         tc.plot(ylim_velocity=[-0.5, 6.0])
-        plt.savefig('tidal_ebb_{:04d}'.format(i))
+        plt.savefig("tidal_ebb_{:04d}".format(i))
         tc.run_one_step(dt=10.0)  # output interval
-        print("", end='\r')
-        print('{:.1f}% finished.'.format(i / steps * 100), end='\r')
+        print("", end="\r")
+        print("{:.1f}% finished.".format(i / steps * 100), end="\r")
 
     tc.plot(ylim_velocity=[-0.5, 6.0])
-    plt.savefig('tidal_ebb_{:04d}'.format(i))
-    tc.save('test_001_5000sec')
-    Fr = tc.U_node[1, :] / \
-        np.sqrt(tc.h_node[1, :] * 1.65 * tc.C_node[1, :] * 9.81)
+    plt.savefig("tidal_ebb_{:04d}".format(i))
+    tc.save("test_001_5000sec")
+    Fr = tc.U_node[1, :] / np.sqrt(tc.h_node[1, :] * 1.65 * tc.C_node[1, :] * 9.81)
     print(Fr)
