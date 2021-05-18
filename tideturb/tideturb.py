@@ -127,6 +127,7 @@ class TwoLayerTurbidityCurrent():
             g=9.81,
             Cf=0.004,
             nu_t=1.0 * 10**-4,
+            nu_a=0.8,
             Ds=50 * 10**-6,
             nu=1.010 * 10**-6,
             h_init=0.0001,
@@ -170,13 +171,16 @@ class TwoLayerTurbidityCurrent():
                Bed friction coefficient. Default value is 0.004.
 
             nu : float, optional
-               Kinematic visocity of water. Default value is 1.010*10**-6
+               Kinematic viscosity of water. Default value is 1.010*10**-6
 
             Ds : float, optional
                Sediment particle diamter. Default value is 50 microns.
 
             nu_t : float, optional
-               Eddy visosity at the interface between two layers
+               Eddy viscosity at the interface between two layers
+
+            nu_a : float, optional
+                Artificial viscosity parameter
 
             h_init : float, optional
                Dummy flow thickness of turbidity current. This is needed for
@@ -206,6 +210,7 @@ class TwoLayerTurbidityCurrent():
             self.g = g
             self.Cf = Cf
             self.nu_t = nu_t
+            self.nu_a = nu_a
             self.Ds = Ds
             self.nu = nu
             self.h_init = h_init
@@ -328,7 +333,7 @@ class TwoLayerTurbidityCurrent():
             A time step length to be used as dt_local.
 
         """
-        advel = np.abs(self.U_link) + np.sqrt(self.g * self.h_link)
+        advel = np.abs(self.U_link) + np.sqrt(self.R * self.C_link * self.g * self.h_link)
         dt = self.alpha * self.dx / np.amax(advel)
         return dt
 
@@ -547,11 +552,25 @@ class TwoLayerTurbidityCurrent():
                     dt_local,
                     out_f=self.C_node_temp,
                     out_dfdx=self.dCdx_temp)
+                
+
 
                 self.update_values(self.h_node_temp, self.h_link_temp,
                                    self.U_node_temp, self.U_link_temp,
                                    self.C_node_temp, self.C_link_temp)
+            
+            # Artificial viscosity for numerical stability
+            self.calc_artificial_viscosity(
+                                        self.h_node_temp, 
+                                        self.h_link_temp,
+                                        self.U_node_temp,
+                                        self.U_link_temp,
+                                        self.C_node_temp,
+                                        self.C_link_temp,
+                                        wet_node, dt_local,
+                                        out_U=self.U_link_temp)
 
+            # Copy temp values to main variables
             self.copy_temp_to_main_variables()
 
             # increment the time step
@@ -559,6 +578,89 @@ class TwoLayerTurbidityCurrent():
 
         # increment the total elapsed time
         self.elapsed_time = self.elapsed_time + elapsed_time_local
+    
+    def calc_artificial_viscosity(self, h_node, h_link, U_node, U_link, C_node, C_link, wet_nodes, dt_local, out_U=None):
+        """Calculate the artificial viscosity based on Ogata and Yabe (1998)
+            Only the velocity is modified at links of compressive region
+
+            Parameters
+            ------------------------------------------------------------
+            h_node: 2d ndarray (float) 
+                Flow thickness at nodes.
+            
+            h_link: 2d ndarray (float) 
+                Flow thickness at links.
+
+            U_node: 2d ndarray (float) 
+                Flow velocity at nodes.
+
+            U_link: 2d ndarray (float)
+                Flow velocity at links.
+            
+            C_node: 2d ndarray (float) 
+                Flow sediment concentration at nodes.
+            
+            C_links: 2d ndarray (float) 
+                Flow sediment concentration at links.
+
+            wet_nodes: 1d ndarray (integer)
+                Indicating wet nodes
+
+            dt_local: float
+                local time step length
+            
+            out_U: 2d ndarray (float)
+                Output values of flow velocity. IF None, new variable is created as return values
+            
+            Returns
+            -------------------------------------------------------------
+            out_U: 2d ndarray (float) 
+                Velocity after the artificial viscosity is applied
+
+        """
+
+        if out_U is None:
+            out_U = np.zeros_like(U_link)
+
+        # set parameters
+        h_t = h_node[1, :]
+        U_t = U_node[1, :]
+        U_t_link = U_link[1, :]
+        icore = self.grid.core_nodes
+        iup = icore - 1
+        idown = icore + 1
+        iup_link = icore - 1
+        idown_link = icore
+        dx = self.dx
+        Rg = self.R * self.g
+        nu_a = self.nu_a
+        dx = self.grid.dx
+        dt = dt_local
+
+        # basic parameters for artificial viscosity
+        Cs = np.zeros_like(h_node)
+        Cs[wet_nodes] = np.sqrt(self.R * self.g * self.C_node[wet_nodes] * self.h_t[wet_nodes])
+
+        # no directional dependent expression of artificial viscosity
+        # calculated only at grids where flow divergence is negative
+        div = np.zeros_like(h_node)
+        div[:] = 0
+        div[wet_nodes] = (U_t_link[idown_link[wet_nodes]] - U_t_link[iup_link[wet_nodes]]) / dx
+        compress = div[wet_nodes] < 0
+        q = np.zeros_like(h_node)
+        q[wet_nodes[~compress]] = 0
+        q[wet_nodes[compress]] = (
+            2.0 * h_t[wet_nodes[compress]]) / Rg * nu_a * dx * (
+                -Cs[wet_nodes[compress]] * div[wet_nodes[compress]] +
+                1.5 * div[wet_nodes[compress]] * div[wet_nodes[compress]] * dx)
+
+        # modify flow velocity based on artificial viscosity
+        out_U[wet_nodes] -= 0.5 * Rg / h_link[wet_nodes] * (
+            q[idown[wet_nodes]] -
+            q[iup[wet_nodes]]) / dx * dt
+
+        return out_U
+
 
     def find_wet_grids(self, h, core, up, down):
         """Find wet nodes or links
