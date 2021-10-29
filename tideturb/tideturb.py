@@ -1,10 +1,11 @@
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
 import matplotlib as mpl
+import os
+import tqdm
 
 mpl.use("Agg")
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
-import ipdb
 
 """This is a model of a turbidity current influenced by tidal flows in
  a submarine canyon. The two-layer shallow water equation system is
@@ -84,7 +85,8 @@ class Grid:
             self.number_of_grids = number_of_grids
             self.dx = spacing
             if end is None:
-                self.x = np.arange(start, start + spacing * number_of_grids, spacing)
+                self.x = np.arange(start, start + spacing *
+                                   number_of_grids, spacing)
             else:
                 self.x = np.arange(start, end, spacing)
 
@@ -96,7 +98,7 @@ class Grid:
                 topo_data = np.loadtxt(filename, delimiter=",")
                 self.eta = np.interp(self.x, topo_data[:, 0], topo_data[:, 1])
             else:
-                grid.eta = grid.x * -0.05  # constant slope
+                self.grid.eta = self.grid.x * -0.05  # constant slope
 
         except ValueError as ve:
             print(ve)
@@ -137,6 +139,7 @@ class TwoLayerTurbidityCurrent:
         h_e=0.01,
         alpha=0.01,
         implicit_repeat_num=5,
+        entrainment="gp1991field",
     ):
         """ Constractor for TwoLayerTurbidityCurrent
 
@@ -199,6 +202,14 @@ class TwoLayerTurbidityCurrent:
                 Number of repetition for calculating implicit scheme. Default
                 is 5.
 
+            entrainment : str, optional(default="gp1991field")
+                Choice of the sediment entrainment function
+                Default is Garcia and Parker (1991) with a limit coefficient 
+                introduced by Fildani et al. (2006).
+                Other choices are:
+                "gp1991": Garcia and Parker (1991)
+                "vanrijn1984": van Rijn (1984) (not implemented)
+                "Leeuw2020" : Leeuw et al. (2020) (not implemented)
         """
         try:
             # set a grid
@@ -228,6 +239,7 @@ class TwoLayerTurbidityCurrent:
             self.dt = 0.1
             self.elapsed_time = 0.0
             self.h_e = h_e
+            self.entrainment = entrainment
 
             # Calculate subordinate parameters
             self.ws = self.get_ws()
@@ -302,7 +314,8 @@ class TwoLayerTurbidityCurrent:
         # self.C_node[1, 1:] = np.ones(self.C_node.shape[1] - 1) * self.C_init
         self.C_node[1, 1:] = concentration * np.ones(self.C_node[1, 1:].shape)
 
-        self.dhdx[:, 1:-1] = (self.h_node[:, :-2] - self.h_node[:, 2:]) / (2 * self.dx)
+        self.dhdx[:, 1:-1] = (self.h_node[:, :-2] -
+                              self.h_node[:, 2:]) / (2 * self.dx)
         self.dhdx[:, 0] = self.dhdx[:, 1]
         self.dhdx[:, -1] = self.dhdx[:, -2]
 
@@ -635,7 +648,7 @@ class TwoLayerTurbidityCurrent:
 
         # increment the total elapsed time
         self.elapsed_time = self.elapsed_time + elapsed_time_local
-    
+
     def calc_artificial_viscosity(self, h_node, h_link, U_node, U_link, C_node, C_link, wet_node, dt_local, out_U=None):
         """Calculate the artificial viscosity based on Ogata and Yabe (1998)
             Only the velocity is modified at links of compressive region
@@ -660,7 +673,7 @@ class TwoLayerTurbidityCurrent:
             ------------------------------------------------------------
             h_node: 2d ndarray (float) 
                 Flow thickness at nodes.
-            
+
             h_link: 2d ndarray (float) 
                 Flow thickness at links.
 
@@ -669,10 +682,10 @@ class TwoLayerTurbidityCurrent:
 
             U_link: 2d ndarray (float)
                 Flow velocity at links.
-            
+
             C_node: 2d ndarray (float) 
                 Flow sediment concentration at nodes.
-            
+
             C_links: 2d ndarray (float) 
                 Flow sediment concentration at links.
 
@@ -681,10 +694,10 @@ class TwoLayerTurbidityCurrent:
 
             dt_local: float
                 local time step length
-            
+
             out_U: 2d ndarray (float)
                 Output values of flow velocity. IF None, new variable is created as return values
-            
+
             Returns
             -------------------------------------------------------------
             out_U: 2d ndarray (float) 
@@ -735,7 +748,8 @@ class TwoLayerTurbidityCurrent:
         )
 
         # modify flow velocity based on artificial viscosity
-        out_U[1, wet_node] -= 0.5 * Rg / h_t[wet_node] * (q[idown] - q[iup]) / dx * dt
+        out_U[1, wet_node] -= 0.5 * Rg / \
+            h_t[wet_node] * (q[idown] - q[iup]) / dx * dt
 
         return out_U
 
@@ -810,9 +824,11 @@ class TwoLayerTurbidityCurrent:
                indeces of downcurrent grids
         """
         partial_wet = (h[core][1] < self.h_e) & (h[up][1] >= self.h_e)
-        partial_wet_grids = tuple((core[0][:, partial_wet], core[1][:, partial_wet]))
+        partial_wet_grids = tuple(
+            (core[0][:, partial_wet], core[1][:, partial_wet]))
         partial_wet_up = tuple((up[0][:, partial_wet], up[1][:, partial_wet]))
-        partial_wet_down = tuple((down[0][:, partial_wet], core[1][:, partial_wet]))
+        partial_wet_down = tuple(
+            (down[0][:, partial_wet], core[1][:, partial_wet]))
 
         return partial_wet_grids, partial_wet_up, partial_wet_down
 
@@ -1182,7 +1198,8 @@ class TwoLayerTurbidityCurrent:
             / h_a[icore]
             * (U_a[icore] - U_t[icore])
             / (h_a[icore] + h_t[icore])
-            + e_w[icore] * np.abs(U_t[icore] - U_a[icore]) * U_a[icore] / h_a[icore]
+            + e_w[icore] * np.abs(U_t[icore] - U_a[icore]
+                                  ) * U_a[icore] / h_a[icore]
         )
         out_G[1, icore] = (
             -(1 + R * C[icore]) * g * (eta[idown] - eta[iup]) / (2 * dx)
@@ -1192,7 +1209,8 @@ class TwoLayerTurbidityCurrent:
                 - (h_a_node[iup_node] + h_t_node[iup_node])
             )
             / (dx)
-            - R * C[icore] * g * (h_t_node[idown_node] - h_t_node[iup_node]) / (dx)
+            - R * C[icore] * g * (h_t_node[idown_node] -
+                                  h_t_node[iup_node]) / (dx)
             + 2
             * nu_t
             / h_t[icore]
@@ -1261,7 +1279,8 @@ class TwoLayerTurbidityCurrent:
         # calculate non-advection terms
         out_G[1, icore] = (
             -(
-                (U_t[icore] ** 2 * h_a[icore]) / (h_t[icore] * H_minus_eta[icore])
+                (U_t[icore] ** 2 * h_a[icore]) /
+                (h_t[icore] * H_minus_eta[icore])
                 + (R * C[icore] * g * (h_a[icore])) / (H_minus_eta[icore])
                 - (2 * U_t[icore] * (Q[icore] - U_t[icore] * h_t[icore]))
                 / (H_minus_eta[icore] * (h_a[icore]))
@@ -1368,6 +1387,46 @@ class TwoLayerTurbidityCurrent:
                 suspension
         """
 
+        es_function = {
+            "gp1991field": self._gp1991field,
+            "gp1991": self._gp1991,
+            "leeuw2020": self._leeuw2020,
+            "vanrijn1984": self._vanrijn1984,
+        }
+
+        return es_function[self.entrainment](U, es)
+
+    def _gp1991field(self, U, es=None):
+        return self._garcia_parker_1991(U, p=0.1, es=es)
+
+    def _gp1991(self, U, es=None):
+        return self._garcia_parker_1991(U, p=1.0, es=es)
+
+    def _leeuw2020(self, U, es=None):
+        return 0.0
+
+    def _vanrijn1984(self, U, es=None):
+        return 0.0
+
+    def _garcia_parker_1991(self, U, p=0.1, es=None):
+        """ Calculate entrainment rate of basal sediment to suspension
+            Based on Garcia and Parker (1991)
+
+            Parameters
+            --------------
+            U : ndarray
+                flow velocity
+
+            p : float
+                limiting coefficient
+
+            Returns
+            ---------------
+            es : ndarray
+                dimensionless entrainment rate of basal sediment into
+                suspension
+        """
+
         if es is None:
             es = np.zeros(U.shape)
 
@@ -1387,7 +1446,6 @@ class TwoLayerTurbidityCurrent:
         # coefficients for calculation
         a = 7.8 * 10 ** -7
         alpha = 0.6
-        p = 1.0
 
         # calculate entrainemnt rate
         Z = sus_index * Rp ** alpha
@@ -1417,7 +1475,8 @@ class TwoLayerTurbidityCurrent:
         C_1 = 18.0
         C_2 = 1.0
 
-        ws = R * g * Ds ** 2 / (C_1 * nu + (0.75 * C_2 * R * g * Ds ** 3) ** 0.5)
+        ws = R * g * Ds ** 2 / \
+            (C_1 * nu + (0.75 * C_2 * R * g * Ds ** 3) ** 0.5)
 
         return ws
 
@@ -1448,9 +1507,11 @@ class TwoLayerTurbidityCurrent:
             - (2 * dfdx[core] + dfdx[up]) / D[core]
         )
         out_f[core] = (
-            a * (xi[core] ** 3) + b * (xi[core] ** 2) + dfdx[core] * xi[core] + f[core]
+            a * (xi[core] ** 3) + b * (xi[core] ** 2) +
+            dfdx[core] * xi[core] + f[core]
         )
-        out_dfdx[core] = 3 * a * (xi[core] ** 2) + 2 * b * xi[core] + dfdx[core]
+        out_dfdx[core] = 3 * a * (xi[core] ** 2) + \
+            2 * b * xi[core] + dfdx[core]
 
         return out_f, out_dfdx
 
@@ -1591,7 +1652,8 @@ class TwoLayerTurbidityCurrent:
                 self.h_node[:, i],
                 self.C_node[:, i],
             )
-            G_C = self.calc_G_C(self.h_node[:, i], self.U_node[:, i], self.C_node[:, i])
+            G_C = self.calc_G_C(
+                self.h_node[:, i], self.U_node[:, i], self.C_node[:, i])
 
     def plot(
         self, xlim=None, ylim_height=None, ylim_velocity=None, ylim_concentration=None
@@ -1636,14 +1698,16 @@ class TwoLayerTurbidityCurrent:
         axL.set_xlim(xlim[0], xlim[1])
         axL.set_ylim(ylim_height[0], ylim_height[1])
         axL.text(
-            xlim[0], ylim_height[1] - 20, "$t = $ {:.0f} s.".format(self.elapsed_time)
+            xlim[0], ylim_height[1] -
+            20, "$t = $ {:.0f} s.".format(self.elapsed_time)
         )
         axL.set_xlabel("Distance (m)")
         axL.set_ylabel("Elevation (m)")
         axL.legend()
 
         # plot flow velocity in the middle figure
-        axM.plot(self.grid.x, self.grid.U_t, label="turbidity current", color="r")
+        axM.plot(self.grid.x, self.grid.U_t,
+                 label="turbidity current", color="r")
         axM.plot(self.grid.x, self.grid.U_a, label="ambient water", color="b")
         axM.set_xlim(xlim[0], xlim[1])
         axM.set_ylim(ylim_velocity[0], ylim_velocity[1])
@@ -1652,7 +1716,8 @@ class TwoLayerTurbidityCurrent:
         axM.legend()
 
         # plot concentration in the right figure
-        axR.plot(self.grid.x, self.grid.C * 100, label="concentration", color="r")
+        axR.plot(self.grid.x, self.grid.C * 100,
+                 label="concentration", color="r")
         axR.set_xlim(xlim[0], xlim[1])
         axR.set_ylim(ylim_concentration[0], ylim_concentration[1])
         axR.set_xlabel("Distance (m)")
@@ -1673,18 +1738,20 @@ def load_model(filename):
 
     with open(filename, "rb") as f:
         tc = pickle.load(f)
-        tc.fig, (tc.axL, tc.axM, tc.axR) = plt.subplots(ncols=3, figsize=(25, 6))
+        tc.fig, (tc.axL, tc.axM, tc.axR) = plt.subplots(
+            ncols=3, figsize=(25, 6))
         return tc
 
     return None
 
 
-if __name__ == "__main__":
-    grid = Grid(number_of_grids=200, spacing=200.0, filename="TopoMonterey.csv")  # Grid
+def run(topofile, ngrids=200.0, spacing=200.0, steps=500, ylim_velocity=[-0.5, 6.0], export_dir="."):
+    grid = Grid(number_of_grids=ngrids, spacing=spacing,
+                filename=topofile)  # Grid
 
     tc = TwoLayerTurbidityCurrent(
         grid=grid,
-        turb_vel=2.0,  # turbidity current velocity at upstream end
+        turb_vel=3.0,  # turbidity current velocity at upstream end
         ambient_vel=0.3,  # ambient water velocity at upstream end
         turb_thick=5.0,  # thickness of turbidity current at upstream end
         ambient_thick=100.0,  # thickness of ambient water
@@ -1696,16 +1763,15 @@ if __name__ == "__main__":
         h_init=0.000,
         h_e=0.001,
     )
-    steps = 500
-    for i in range(steps):
-        tc.plot(ylim_velocity=[-0.5, 6.0])
-        plt.savefig("tidal_ebb_{:04d}".format(i))
+    for i in tqdm(range(steps)):
+        tc.plot(ylim_velocity=ylim_velocity)
+        plt.savefig(os.path.join(export_dir, "tidal_ebb_{:04d}".format(i)))
         tc.run_one_step(dt=10.0)  # output interval
-        print("", end="\r")
-        print("{:.1f}% finished.".format(i / steps * 100), end="\r")
 
-    tc.plot(ylim_velocity=[-0.5, 6.0])
-    plt.savefig("tidal_ebb_{:04d}".format(i))
-    tc.save("test_001_5000sec")
-    Fr = tc.U_node[1, :] / np.sqrt(tc.h_node[1, :] * 1.65 * tc.C_node[1, :] * 9.81)
-    print(Fr)
+    tc.plot(ylim_velocity=ylim_velocity)
+    plt.savefig(os.path.join(export_dir, "tidal_ebb_{:04d}".format(i)))
+    tc.save(os.path.join(export_dir, "test_001_5000sec"))
+
+
+if __name__ == "__main__":
+    run("../TopoMonterey.csv", export_dir="..")
